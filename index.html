@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraction X-Ray Studio | ฟิล์มสแกนเศษส่วนแปลงร่าง</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for Eureka Celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Google Fonts: Kanit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        },
+                        fractionA: '#2563eb', // Vivid Blue
+                        fractionB: '#dc2626', // Vivid Red
+                        overlay: '#7c3aed',   // Vivid Purple
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom animations & Glassmorphism effects */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+        }
+        
+        .film-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .xray-glow {
+            box-shadow: 0 0 25px rgba(124, 58, 237, 0.35);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        .eureka-pulse {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans selection:bg-indigo-500 selection:text-white flex flex-col">
+
+    <!-- Header Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    X
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight text-slate-900 flex items-center gap-2">
+                        Fraction X-Ray Studio
+                        <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline-block">CPA Model</span>
+                    </h1>
+                    <p class="text-xs text-slate-500">ฟิล์มสแกนเศษส่วนแปลงร่าง • "ทาบปุ๊บ เห็นปั๊บ จับส่วนให้เท่ากัน!"</p>
+                </div>
+            </div>
+
+            <!-- Tab Mode Controls -->
+            <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-100 p-1 rounded-xl">
+                <button id="tab-explore" onclick="switchMode('explore')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white text-indigo-600">
+                    🔍 ห้องเรียนสำรวจ (Explore)
+                </button>
+                <button id="tab-quiz" onclick="switchMode('quiz')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-all">
+                    🎯 ท้าทายโจทย์ (Quiz)
+                </button>
+                <button id="tab-misconception" onclick="openMisconceptionModal()" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-all hidden md:flex items-center gap-1">
+                    ⚠️ พิสูจน์ข้อผิดพลาด
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- EXPLORE MODE -->
+        <div id="mode-explore" class="space-y-6">
+            
+            <!-- Control Toolbar & Preset Buttons -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <span>⚙️ กำหนดค่าเศษส่วนที่ต้องการคำนวณ</span>
+                    </h2>
+                    
+                    <!-- Presets -->
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="text-slate-400 font-medium">โจทย์ยอดฮิต:</span>
+                        <button onclick="setPreset(1,2,'+',1,3)" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition font-medium text-slate-600">1/2 + 1/3</button>
+                        <button onclick="setPreset(2,3,'+',1,4)" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition font-medium text-slate-600">2/3 + 1/4</button>
+                        <button onclick="setPreset(3,4,'-',1,2)" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition font-medium text-slate-600">3/4 - 1/2</button>
+                        <button onclick="setPreset(2,5,'+',1,2)" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition font-medium text-slate-600">2/5 + 1/2</button>
+                    </div>
+                </div>
+
+                <!-- Fraction Inputs Card -->
+                <div class="grid grid-cols-1 md:grid-cols-11 gap-4 items-center bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                    
+                    <!-- Fraction A Input (Vertical splits) -->
+                    <div class="md:col-span-4 bg-blue-50/70 border border-blue-200 p-3 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-8 bg-blue-600 rounded-full inline-block"></span>
+                            <div>
+                                <p class="text-xs font-bold text-blue-900">แผ่นฟิล์ม A (แนวตั้ง)</p>
+                                <p class="text-[10px] text-blue-600">สอยแบ่งคอลัมน์ Y</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex flex-col items-center">
+                                <label class="text-[10px] text-slate-500">ตัวเศษ</label>
+                                <select id="numA" onchange="updateMathState()" class="bg-white border border-blue-300 rounded-lg font-bold text-blue-700 px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                </select>
+                            </div>
+                            <span class="text-lg font-bold text-blue-400">/</span>
+                            <div class="flex flex-col items-center">
+                                <label class="text-[10px] text-slate-500">ตัวส่วน</label>
+                                <select id="denA" onchange="updateMathState()" class="bg-white border border-blue-300 rounded-lg font-bold text-blue-700 px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operator Selector -->
+                    <div class="md:col-span-3 flex justify-center items-center">
+                        <div class="inline-flex bg-white p-1 rounded-xl border border-slate-300 shadow-sm">
+                            <button id="op-add" onclick="setOperator('+')" class="px-4 py-1.5 rounded-lg font-bold text-sm transition-all bg-indigo-600 text-white shadow">
+                                + (บวก)
+                            </button>
+                            <button id="op-sub" onclick="setOperator('-')" class="px-4 py-1.5 rounded-lg font-bold text-sm transition-all text-slate-600 hover:text-indigo-600">
+                                − (ลบ)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Fraction B Input (Horizontal splits) -->
+                    <div class="md:col-span-4 bg-rose-50/70 border border-rose-200 p-3 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-3 bg-rose-600 rounded-full inline-block"></span>
+                            <div>
+                                <p class="text-xs font-bold text-rose-900">แผ่นฟิล์ม B (แนวนอน)</p>
+                                <p class="text-[10px] text-rose-600">สอยแบ่งแถว X</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex flex-col items-center">
+                                <label class="text-[10px] text-slate-500">ตัวเศษ</label>
+                                <select id="numB" onchange="updateMathState()" class="bg-white border border-rose-300 rounded-lg font-bold text-rose-700 px-2 py-1 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                                </select>
+                            </div>
+                            <span class="text-lg font-bold text-rose-400">/</span>
+                            <div class="flex flex-col items-center">
+                                <label class="text-[10px] text-slate-500">ตัวส่วน</label>
+                                <select id="denB" onchange="updateMathState()" class="bg-white border border-rose-300 rounded-lg font-bold text-rose-700 px-2 py-1 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Interactive Visual Playground (Concrete Stage) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Screen: Overlay Interactive Simulator -->
+                <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">ขั้นที่ 1: Concrete (รูปธรรม)</span>
+                            <h3 class="text-lg font-bold text-slate-800">แผ่นฟิล์มสแกน X-Ray ซ้อนทับ</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-toggle-scan" onclick="toggleOverlayAnimation()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow flex items-center gap-1.5">
+                                <span id="scan-icon">✨</span> <span id="scan-btn-text">ซ้อนทับฟิล์ม (X-Ray Overlay)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Slider Control -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs text-slate-500 font-medium">
+                            <span>แยกแผ่นฟิล์มเดี่ยว</span>
+                            <span id="overlay-percent-text" class="text-indigo-600 font-bold">ทาบซ้อนทับ 100% (จุดเกิดตารางย่อย)</span>
+                        </div>
+                        <input type="range" id="overlay-slider" min="0" max="100" value="100" oninput="onSliderChange(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                    </div>
+
+                    <!-- Canvas Interactive Rendering Area -->
+                    <div class="relative bg-slate-900/5 rounded-2xl p-4 sm:p-8 flex flex-col items-center justify-center min-h-[360px] overflow-hidden border border-slate-200">
+                        
+                        <!-- Visual Container for Films -->
+                        <div class="relative w-64 h-64 sm:w-72 sm:h-72 bg-white rounded-xl shadow-xl border-4 border-slate-800 p-1 flex items-center justify-center xray-glow transition-all">
+                            
+                            <!-- Base Frame Grid (Canvas) -->
+                            <canvas id="xrayCanvas" width="280" height="280" class="w-full h-full rounded-lg"></canvas>
+
+                        </div>
+
+                        <!-- Scan Status Badge -->
+                        <div class="mt-4 inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm text-xs text-slate-700 font-medium">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span>จุดตัดกริดใหม่: เกิดเป็นช่องตารางย่อยเท่ากันทั้งหมด <strong id="total-cells-badge" class="text-indigo-600 font-extrabold text-sm">6</strong> ช่อง</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Legend Info Cards -->
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-1">
+                            <div class="font-bold text-blue-900 flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 bg-blue-600 rounded-sm"></span>
+                                ฟิล์ม A (<span id="legend-frac-a">1/2</span>)
+                            </div>
+                            <p class="text-slate-600">แปลงเป็นตารางย่อยได้: <strong id="legend-count-a" class="text-blue-700 font-bold">3</strong> ช่องเล็ก</p>
+                            <p class="text-[10px] text-blue-500">คิดเป็น $\frac{3}{6}$ ของตารางรวม</p>
+                        </div>
+                        <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl space-y-1">
+                            <div class="font-bold text-rose-900 flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 bg-rose-600 rounded-sm"></span>
+                                ฟิล์ม B (<span id="legend-frac-b">1/3</span>)
+                            </div>
+                            <p class="text-slate-600">แปลงเป็นตารางย่อยได้: <strong id="legend-count-b" class="text-rose-700 font-bold">2</strong> ช่องเล็ก</p>
+                            <p class="text-[10px] text-rose-500">คิดเป็น $\frac{2}{6}$ ของตารางรวม</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Screen: CPA Pictorial & Abstract Progression -->
+                <div class="lg:col-span-5 space-y-5">
+                    
+                    <!-- CPA Step 2: Pictorial Representation -->
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-2 flex justify-between items-center">
+                            <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">ขั้นที่ 2: Pictorial (กึ่งรูปธรรม)</span>
+                            <span class="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-md">บันทึกเป็นแผนภาพ</span>
+                        </div>
+
+                        <!-- Side-by-side fraction drawings -->
+                        <div class="grid grid-cols-2 gap-3 text-center">
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center space-y-2">
+                                <p class="text-xs font-bold text-blue-800">ตารางฟิล์ม A ใหม่</p>
+                                <canvas id="canvasPictorialA" width="100" height="100" class="w-20 h-20 bg-white rounded border border-slate-300 shadow-sm"></canvas>
+                                <p class="text-sm font-extrabold text-blue-600" id="pictorial-text-a">3 / 6</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center space-y-2">
+                                <p class="text-xs font-bold text-rose-800">ตารางฟิล์ม B ใหม่</p>
+                                <canvas id="canvasPictorialB" width="100" height="100" class="w-20 h-20 bg-white rounded border border-slate-300 shadow-sm"></canvas>
+                                <p class="text-sm font-extrabold text-rose-600" id="pictorial-text-b">2 / 6</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+                            <p class="font-bold flex items-center gap-1">💡 ข้อสังเกตสากล (Eureka Insight):</p>
+                            <p class="leading-relaxed">เมื่อซ้อนฟิล์มแล้ว ขนาดช่องเล็กทุกช่องจะ **"เท่ากันเป๊ะ"** จึงนำจำนวนช่องมารวมหรือลบกันตรงๆ ได้แล้ว!</p>
+                        </div>
+                    </div>
+
+                    <!-- CPA Step 3: Abstract Mathematical Notation -->
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-2 flex justify-between items-center">
+                            <span class="text-xs font-bold text-purple-600 uppercase tracking-wider">ขั้นที่ 3: Abstract (นามธรรม)</span>
+                            <span class="text-xs bg-purple-50 text-purple-700 font-semibold px-2 py-0.5 rounded-md">ประโยคสัญลักษณ์</span>
+                        </div>
+
+                        <!-- Dynamic Math Steps -->
+                        <div class="space-y-3 font-mono text-xs sm:text-sm">
+                            
+                            <!-- Step 1: Converting to Common Denominator -->
+                            <div class="p-3 bg-purple-50/60 rounded-xl border border-purple-100 space-y-2">
+                                <p class="font-sans text-xs font-bold text-purple-900">1. แปลงส่วนให้เท่ากันด้วยจำนวนแถวคูณกัน:</p>
+                                <div class="flex flex-wrap items-center gap-2 justify-center font-bold text-slate-800 text-sm">
+                                    <div class="flex items-center gap-1 bg-white px-2 py-1 rounded border border-blue-200">
+                                        <span>frac A:</span>
+                                        <span class="text-blue-600" id="math-step1-a">1/2</span>
+                                        <span>=</span>
+                                        <span class="text-blue-600" id="math-step1-a-exp">3/6</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 bg-white px-2 py-1 rounded border border-rose-200">
+                                        <span>frac B:</span>
+                                        <span class="text-rose-600" id="math-step1-b">1/3</span>
+                                        <span>=</span>
+                                        <span class="text-rose-600" id="math-step1-b-exp">2/6</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Final Calculation Equation -->
+                            <div class="p-3 bg-slate-900 text-white rounded-xl space-y-2 text-center">
+                                <p class="font-sans text-xs font-bold text-slate-300">2. ประโยคสัญลักษณ์ผลลัพธ์สุดท้าย:</p>
+                                <div class="text-base sm:text-lg font-bold tracking-wide flex items-center justify-center gap-2">
+                                    <span class="text-blue-400" id="math-eq-a">3/6</span>
+                                    <span id="math-eq-op" class="text-amber-400">+</span>
+                                    <span class="text-rose-400" id="math-eq-b">2/6</span>
+                                    <span>=</span>
+                                    <span id="math-eq-res" class="text-emerald-400 text-xl font-extrabold underline decoration-emerald-400 underline-offset-4">5/6</span>
+                                </div>
+                                <p id="math-reduced-text" class="text-[11px] text-amber-300 font-sans hidden"></p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- QUIZ & CHALLENGE MODE -->
+        <div id="mode-quiz" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
+                
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">🎯 ด่านท้าทายภารกิจสแกน X-Ray</span>
+                        <h2 class="text-xl font-bold text-slate-900">ทดสอบความเข้าใจด้วยตาตนเอง</h2>
+                    </div>
+                    <div class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                        🏆 คะแนนสะสม: <span id="quiz-score" class="text-sm text-amber-900">0</span>
+                    </div>
+                </div>
+
+                <!-- Question Box -->
+                <div class="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center space-y-4">
+                    <p class="text-sm font-medium text-slate-500">คำถามข้อที่ <span id="quiz-num">1</span>/5</p>
+                    <div class="text-3xl font-extrabold text-slate-800 flex items-center justify-center gap-3">
+                        <span id="quiz-frac-a" class="text-blue-600">1/2</span>
+                        <span id="quiz-op" class="text-indigo-600">+</span>
+                        <span id="quiz-frac-b" class="text-rose-600">1/4</span>
+                        <span>=</span>
+                        <span class="text-slate-400">?</span>
+                    </div>
+                    <p class="text-xs text-slate-500">ใช้สแกนเนอร์ X-Ray จำลองหาตารางย่อยแล้วเลือกคำตอบที่ถูกต้อง</p>
+                </div>
+
+                <!-- Interactive Mini X-Ray Helper in Quiz -->
+                <div class="bg-slate-900/5 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-200 space-y-2">
+                    <p class="text-xs font-bold text-slate-600">แผ่นฟิล์มสแกนช่วยคิด (Mini X-Ray Preview):</p>
+                    <canvas id="quizCanvas" width="180" height="180" class="bg-white rounded-lg border-2 border-slate-700 shadow-md"></canvas>
+                </div>
+
+                <!-- Answer Choices Grid -->
+                <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Dynamic Buttons generated by JS -->
+                </div>
+
+                <!-- Scaffolding Feedback Box -->
+                <div id="quiz-feedback" class="hidden p-4 rounded-xl text-sm font-semibold transition-all"></div>
+
+                <div class="flex justify-end pt-2">
+                    <button id="btn-next-quiz" onclick="nextQuizQuestion()" class="hidden px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow">
+                        ข้อถัดไป ➔
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MISCONCEPTION BUSTER MODAL -->
+    <div id="modal-misconception" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-5 border border-slate-200 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button onclick="closeMisconceptionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+            
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl font-bold">
+                    ⚠️
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-lg">พิสูจน์ข้อผิดพลาดที่พบบ่อย (Misconception Buster)</h3>
+                    <p class="text-xs text-slate-500">ทำไมเอาเศษบวกเศษ ส่วนบวกส่วนตรงๆ ถึงผิด?</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-xs sm:text-sm text-slate-700">
+                <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 space-y-1">
+                    <p class="font-bold">❌ ความเข้าใจผิดยอดฮิต:</p>
+                    <p class="font-mono text-base font-extrabold text-rose-700">1/2 + 1/3 = (1+1)/(2+3) = 2/5</p>
+                </div>
+
+                <p class="leading-relaxed">
+                    ลองพิสูจน์ด้วยตา! พิซซ่าถาดแรกเหลือ <strong class="text-blue-600">1/2 (ครึ่งถาด)</strong> รวมกับอีกถาด <strong class="text-rose-600">1/3</strong> ผลลัพธ์ควรจะ **เกินครึ่งถาด** แน่นอน!
+                </p>
+
+                <div class="bg-slate-100 p-4 rounded-xl flex items-center justify-around border border-slate-200 text-center font-bold">
+                    <div>
+                        <p class="text-slate-500 text-[10px]">ค่าจริงของ 1/2 + 1/3</p>
+                        <p class="text-emerald-600 text-lg">5/6 (เกือบเต็มถาด!)</p>
+                    </div>
+                    <span class="text-slate-400 text-xl">VS</span>
+                    <div>
+                        <p class="text-slate-500 text-[10px]">ค่าที่เดาผิด (2/5)</p>
+                        <p class="text-rose-600 text-lg">2/5 (น้อยกว่าครึ่งถาด!)</p>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-blue-900 text-xs leading-relaxed">
+                    <strong>💡 สรุปด้วยสื่อ X-Ray:</strong> การบวกเศษส่วนไม่ใช่การนับจำนวนชิ้น แต่คือการ **"ปรับขนาดพื้นที่ชิ้นให้เท่ากันก่อน"** ด้วยตารางย่อย แล้วจึงนำจำนวนชิ้นย่อยมารวมกัน
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeMisconceptionModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
+                    เข้าใจแล้ว ปิดหน้าต่างนี้
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Javascript -->
+    <script>
+        // Global State
+        const state = {
+            numA: 1,
+            denA: 2,
+            numB: 1,
+            denB: 3,
+            operator: '+',
+            overlayPercent: 100,
+            isScanAnimated: false,
+            quizIndex: 0,
+            quizScore: 0,
+            currentQuiz: null
+        };
+
+        // DOM Element Cache
+        const el = {
+            numA: document.getElementById('numA'),
+            denA: document.getElementById('denA'),
+            numB: document.getElementById('numB'),
+            denB: document.getElementById('denB'),
+            opAdd: document.getElementById('op-add'),
+            opSub: document.getElementById('op-sub'),
+            canvas: document.getElementById('xrayCanvas'),
+            canvasPictA: document.getElementById('canvasPictorialA'),
+            canvasPictB: document.getElementById('canvasPictorialB'),
+            overlaySlider: document.getElementById('overlay-slider'),
+            overlayPercentText: document.getElementById('overlay-percent-text'),
+            totalCellsBadge: document.getElementById('total-cells-badge'),
+            legendFracA: document.getElementById('legend-frac-a'),
+            legendFracB: document.getElementById('legend-frac-b'),
+            legendCountA: document.getElementById('legend-count-a'),
+            legendCountB: document.getElementById('legend-count-b'),
+            pictorialTextA: document.getElementById('pictorial-text-a'),
+            pictorialTextB: document.getElementById('pictorial-text-b'),
+            mathStep1A: document.getElementById('math-step1-a'),
+            mathStep1AExp: document.getElementById('math-step1-a-exp'),
+            mathStep1B: document.getElementById('math-step1-b'),
+            mathStep1BExp: document.getElementById('math-step1-b-exp'),
+            mathEqA: document.getElementById('math-eq-a'),
+            mathEqB: document.getElementById('math-eq-b'),
+            mathEqOp: document.getElementById('math-eq-op'),
+            mathEqRes: document.getElementById('math-eq-res'),
+            mathReducedText: document.getElementById('math-reduced-text'),
+            scanBtnText: document.getElementById('scan-btn-text'),
+            scanIcon: document.getElementById('scan-icon')
+        };
+
+        // GCD Utility Function
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        // Initialize Select Options
+        function initSelectOptions() {
+            for (let i = 1; i <= 10; i++) {
+                const optA = document.createElement('option');
+                optA.value = i;
+                optA.textContent = i;
+                if (i === 2) optA.selected = true;
+                el.denA.appendChild(optA);
+
+                const optB = document.createElement('option');
+                optB.value = i;
+                optB.textContent = i;
+                if (i === 3) optB.selected = true;
+                el.denB.appendChild(optB);
+            }
+            updateNumeratorOptions();
+        }
+
+        function updateNumeratorOptions() {
+            const dA = parseInt(el.denA.value);
+            const dB = parseInt(el.denB.value);
+
+            // Numerator A
+            const curNumA = parseInt(el.numA.value) || 1;
+            el.numA.innerHTML = '';
+            for (let i = 1; i <= dA; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = i;
+                if (i === Math.min(curNumA, dA)) opt.selected = true;
+                el.numA.appendChild(opt);
+            }
+
+            // Numerator B
+            const curNumB = parseInt(el.numB.value) || 1;
+            el.numB.innerHTML = '';
+            for (let i = 1; i <= dB; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = i;
+                if (i === Math.min(curNumB, dB)) opt.selected = true;
+                el.numB.appendChild(opt);
+            }
+        }
+
+        // Update App Math State
+        function updateMathState() {
+            updateNumeratorOptions();
+            state.numA = parseInt(el.numA.value);
+            state.denA = parseInt(el.denA.value);
+            state.numB = parseInt(el.numB.value);
+            state.denB = parseInt(el.denB.value);
+
+            // Validation for subtraction (Ensure Frac A >= Frac B for elementary level)
+            if (state.operator === '-') {
+                const valA = state.numA / state.denA;
+                const valB = state.numB / state.denB;
+                if (valA < valB) {
+                    // Auto-adjust numerator A to be equal or larger
+                    state.numA = Math.min(state.denA, Math.ceil((valB) * state.denA));
+                    el.numA.value = state.numA;
+                }
+            }
+
+            renderAllVisuals();
+        }
+
+        function setOperator(op) {
+            state.operator = op;
+            if (op === '+') {
+                el.opAdd.className = 'px-4 py-1.5 rounded-lg font-bold text-sm transition-all bg-indigo-600 text-white shadow';
+                el.opSub.className = 'px-4 py-1.5 rounded-lg font-bold text-sm transition-all text-slate-600 hover:text-indigo-600';
+            } else {
+                el.opSub.className = 'px-4 py-1.5 rounded-lg font-bold text-sm transition-all bg-indigo-600 text-white shadow';
+                el.opAdd.className = 'px-4 py-1.5 rounded-lg font-bold text-sm transition-all text-slate-600 hover:text-indigo-600';
+            }
+            updateMathState();
+        }
+
+        function setPreset(nA, dA, op, nB, dB) {
+            el.denA.value = dA;
+            el.denB.value = dB;
+            updateNumeratorOptions();
+            el.numA.value = nA;
+            el.numB.value = nB;
+            setOperator(op);
+        }
+
+        function onSliderChange(val) {
+            state.overlayPercent = parseInt(val);
+            if (state.overlayPercent < 100) {
+                el.overlayPercentText.textContent = `ทาบซ้อนทับ ${state.overlayPercent}%`;
+                el.overlayPercentText.className = 'text-slate-500 font-bold';
+            } else {
+                el.overlayPercentText.textContent = `ทาบซ้อนทับ 100% (จุดเกิดตารางย่อย)`;
+                el.overlayPercentText.className = 'text-indigo-600 font-bold';
+            }
+            renderXRayCanvas();
+        }
+
+        function toggleOverlayAnimation() {
+            if (state.overlayPercent >= 100) {
+                // Animate separating then combining
+                let p = 100;
+                const timer = setInterval(() => {
+                    p -= 5;
+                    if (p <= 0) {
+                        clearInterval(timer);
+                        setTimeout(() => animateCombine(), 200);
+                    }
+                    el.overlaySlider.value = p;
+                    onSliderChange(p);
+                }, 15);
+            } else {
+                animateCombine();
+            }
+        }
+
+        function animateCombine() {
+            let p = 0;
+            const timer = setInterval(() => {
+                p += 4;
+                if (p >= 100) {
+                    p = 100;
+                    clearInterval(timer);
+                    confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+                }
+                el.overlaySlider.value = p;
+                onSliderChange(p);
+            }, 15);
+        }
+
+        // Render All Visual Outputs (CPA 3 Steps)
+        function renderAllVisuals() {
+            renderXRayCanvas();
+            renderPictorialCanvases();
+            renderAbstractMath();
+        }
+
+        // Render Main Canvas Overlay
+        function renderXRayCanvas() {
+            const canvas = el.canvas;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const totalCells = state.denA * state.denB;
+            const newNumA = state.numA * state.denB;
+            const newNumB = state.numB * state.denA;
+
+            el.totalCellsBadge.textContent = totalCells;
+            el.legendFracA.textContent = `${state.numA}/${state.denA}`;
+            el.legendFracB.textContent = `${state.numB}/${state.denB}`;
+            el.legendCountA.textContent = newNumA;
+            el.legendCountB.textContent = newNumB;
+
+            const alpha = state.overlayPercent / 100;
+
+            // Draw Film A (Vertical Blue Stripes)
+            const colWidth = w / state.denA;
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.45)'; // Semi-transparent Blue
+            for (let i = 0; i < state.numA; i++) {
+                ctx.fillRect(i * colWidth, 0, colWidth, h);
+            }
+            // Vertical Grid lines
+            ctx.strokeStyle = '#1d4ed8';
+            ctx.lineWidth = 2;
+            for (let i = 0; i <= state.denA; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * colWidth, 0);
+                ctx.lineTo(i * colWidth, h);
+                ctx.stroke();
+            }
+
+            // Draw Film B (Horizontal Red Stripes - with slider overlay effect)
+            const rowHeight = h / state.denB;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.45)'; // Semi-transparent Red
+            for (let j = 0; j < state.numB; j++) {
+                ctx.fillRect(0, j * rowHeight, w, rowHeight);
+            }
+            // Horizontal Grid lines
+            ctx.strokeStyle = '#b91c1c';
+            ctx.lineWidth = 2;
+            for (let j = 0; j <= state.denB; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, j * rowHeight);
+                ctx.lineTo(w, j * rowHeight);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Highlight Sub-grid intersections when overlayed
+            if (alpha > 0.5) {
+                const cellW = w / state.denA;
+                const cellH = h / state.denB;
+
+                for (let i = 0; i < state.denA; i++) {
+                    for (let j = 0; j < state.denB; j++) {
+                        const isA = i < state.numA;
+                        const isB = j < state.numB;
+
+                        // Overlap Area (Purple Glow)
+                        if (isA && isB) {
+                            ctx.fillStyle = 'rgba(124, 58, 237, 0.35)'; // Purple overlay
+                            ctx.fillRect(i * cellW, j * cellH, cellW, cellH);
+                        }
+
+                        // Grid cell border
+                        ctx.strokeStyle = 'rgba(15, 23, 42, 0.2)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(i * cellW, j * cellH, cellW, cellH);
+                    }
+                }
+            }
+        }
+
+        // Render Pictorial Step Canvases
+        function renderPictorialCanvases() {
+            // Pictorial A
+            drawPictorialGrid(el.canvasPictA, state.denA, state.denB, state.numA, 'col');
+            el.pictorialTextA.textContent = `${state.numA * state.denB} / ${state.denA * state.denB}`;
+
+            // Pictorial B
+            drawPictorialGrid(el.canvasPictB, state.denA, state.denB, state.numB, 'row');
+            el.pictorialTextB.textContent = `${state.numB * state.denA} / ${state.denA * state.denB}`;
+        }
+
+        function drawPictorialGrid(canvas, denCols, denRows, numFilled, mode) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const cW = w / denCols;
+            const cH = h / denRows;
+
+            if (mode === 'col') {
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.6)';
+                for (let i = 0; i < numFilled; i++) {
+                    ctx.fillRect(i * cW, 0, cW, h);
+                }
+            } else {
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                for (let j = 0; j < numFilled; j++) {
+                    ctx.fillRect(0, j * cH, w, cH);
+                }
+            }
+
+            // Draw Full Grid
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= denCols; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cW, 0);
+                ctx.lineTo(i * cW, h);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= denRows; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, j * cH);
+                ctx.lineTo(w, j * cH);
+                ctx.stroke();
+            }
+        }
+
+        // Render Step 3 Abstract Math Notations
+        function renderAbstractMath() {
+            const commonDen = state.denA * state.denB;
+            const newNumA = state.numA * state.denB;
+            const newNumB = state.numB * state.denA;
+
+            el.mathStep1A.textContent = `${state.numA}/${state.denA}`;
+            el.mathStep1AExp.textContent = `(${state.numA}×${state.denB})/(${state.denA}×${state.denB}) = ${newNumA}/${commonDen}`;
+
+            el.mathStep1B.textContent = `${state.numB}/${state.denB}`;
+            el.mathStep1BExp.textContent = `(${state.numB}×${state.denA})/(${state.denB}×${state.denA}) = ${newNumB}/${commonDen}`;
+
+            el.mathEqA.textContent = `${newNumA}/${commonDen}`;
+            el.mathEqOp.textContent = state.operator;
+            el.mathEqB.textContent = `${newNumB}/${commonDen}`;
+
+            let resNum = (state.operator === '+') ? (newNumA + newNumB) : (newNumA - newNumB);
+            el.mathEqRes.textContent = `${resNum}/${commonDen}`;
+
+            // Check if fraction can be reduced
+            const divisor = gcd(Math.abs(resNum), commonDen);
+            if (divisor > 1 && resNum !== 0) {
+                const reducedNum = resNum / divisor;
+                const reducedDen = commonDen / divisor;
+                el.mathReducedText.textContent = `✨ รูปอย่างง่าย: ${reducedNum}/${reducedDen}`;
+                el.mathReducedText.classList.remove('hidden');
+            } else {
+                el.mathReducedText.classList.add('hidden');
+            }
+        }
+
+        // Mode Switching
+        function switchMode(mode) {
+            const exploreTab = document.getElementById('tab-explore');
+            const quizTab = document.getElementById('tab-quiz');
+            const exploreMode = document.getElementById('mode-explore');
+            const quizMode = document.getElementById('mode-quiz');
+
+            if (mode === 'explore') {
+                exploreTab.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white text-indigo-600';
+                quizTab.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-all';
+                exploreMode.classList.remove('hidden');
+                quizMode.classList.add('hidden');
+            } else {
+                quizTab.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-sm bg-white text-indigo-600';
+                exploreTab.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-all';
+                quizMode.classList.remove('hidden');
+                exploreMode.classList.add('hidden');
+                startQuizQuestion();
+            }
+        }
+
+        // Misconception Modal Controls
+        function openMisconceptionModal() {
+            document.getElementById('modal-misconception').classList.remove('hidden');
+        }
+        function closeMisconceptionModal() {
+            document.getElementById('modal-misconception').classList.add('hidden');
+        }
+
+        // Quiz System Logic
+        const quizBank = [
+            { nA: 1, dA: 2, op: '+', nB: 1, dB: 3, options: ['5/6', '2/5', '2/6', '4/6'], correct: '5/6', hint: 'ซ้อนฟิล์มสแกนแล้วเกิดตาราง 6 ช่อง (3/6 + 2/6)' },
+            { nA: 1, dA: 3, op: '+', nB: 1, dB: 4, options: ['7/12', '2/7', '2/12', '5/12'], correct: '7/12', hint: 'ตารางใหม่มี 12 ช่องเล็ก (4/12 + 3/12)' },
+            { nA: 3, dA: 4, op: '-', nB: 1, dB: 2, options: ['1/4', '2/2', '2/4', '1/2'], correct: '1/4', hint: 'ซ้อนฟิล์มแล้วหักออก: 6/8 - 4/8 = 2/8 ตัดเป็น 1/4' },
+            { nA: 2, dA: 5, op: '+', nB: 1, dB: 2, options: ['9/10', '3/7', '3/10', '7/10'], correct: '9/10', hint: 'เกิดตาราง 10 ช่อง (4/10 + 5/10)' },
+            { nA: 1, dA: 2, op: '+', nB: 1, dB: 4, options: ['3/4', '2/6', '5/8', '3/8'], correct: '3/4', hint: 'ปรับเป็นส่วน 8 ช่องย่อย (4/8 + 2/8 = 6/8 = 3/4)' }
+        ];
+
+        function startQuizQuestion() {
+            const q = quizBank[state.quizIndex % quizBank.length];
+            state.currentQuiz = q;
+
+            document.getElementById('quiz-num').textContent = (state.quizIndex % quizBank.length) + 1;
+            document.getElementById('quiz-frac-a').textContent = `${q.nA}/${q.dA}`;
+            document.getElementById('quiz-op').textContent = q.op;
+            document.getElementById('quiz-frac-b').textContent = `${q.nB}/${q.dB}`;
+
+            document.getElementById('quiz-feedback').className = 'hidden';
+            document.getElementById('btn-next-quiz').classList.add('hidden');
+
+            // Render Mini Quiz Canvas
+            renderQuizCanvas(q.nA, q.dA, q.nB, q.dB);
+
+            // Render Options
+            const optsContainer = document.getElementById('quiz-options');
+            optsContainer.innerHTML = '';
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'p-4 bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 rounded-xl font-extrabold text-lg text-slate-800 transition text-center shadow-sm';
+                btn.textContent = opt;
+                btn.onclick = () => checkQuizAnswer(opt, btn);
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function renderQuizCanvas(nA, dA, nB, dB) {
+            const canvas = document.getElementById('quizCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const cW = w / dA;
+            const cH = h / dB;
+
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.4)';
+            for (let i = 0; i < nA; i++) ctx.fillRect(i * cW, 0, cW, h);
+
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
+            for (let j = 0; j < nB; j++) ctx.fillRect(0, j * cH, w, cH);
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= dA; i++) {
+                ctx.beginPath(); ctx.moveTo(i * cW, 0); ctx.lineTo(i * cW, h); ctx.stroke();
+            }
+            for (let j = 0; j <= dB; j++) {
+                ctx.beginPath(); ctx.moveTo(0, j * cH); ctx.lineTo(w, j * cH); ctx.stroke();
+            }
+        }
+
+        function checkQuizAnswer(selected, btn) {
+            const q = state.currentQuiz;
+            const feedback = document.getElementById('quiz-feedback');
+            const optsBtns = document.getElementById('quiz-options').children;
+
+            for (let b of optsBtns) b.disabled = true;
+
+            if (selected === q.correct) {
+                btn.className = 'p-4 bg-emerald-500 border-2 border-emerald-600 text-white rounded-xl font-extrabold text-lg text-center shadow-md';
+                feedback.className = 'p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs sm:text-sm space-y-1 block';
+                feedback.innerHTML = `🎉 <strong>ถูกต้องแล้ว! Eureka Moment!</strong><br>${q.hint}`;
+                state.quizScore += 10;
+                document.getElementById('quiz-score').textContent = state.quizScore;
+                confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+            } else {
+                btn.className = 'p-4 bg-rose-500 border-2 border-rose-600 text-white rounded-xl font-extrabold text-lg text-center shadow-md';
+                feedback.className = 'p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs sm:text-sm space-y-1 block';
+                feedback.innerHTML = `❌ <strong>ยังไม่ถูกต้องนะ!</strong><br>คำตอบที่ถูกคือ <strong class="text-indigo-700">${q.correct}</strong><br>💡 คำแนะแนว: ${q.hint}`;
+            }
+
+            document.getElementById('btn-next-quiz').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            state.quizIndex++;
+            startQuizQuestion();
+        }
+
+        // Initialize App on DOM Ready
+        window.addEventListener('DOMContentLoaded', () => {
+            initSelectOptions();
+            updateMathState();
+        });
+    </script>
+</body>
+</html>
